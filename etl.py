@@ -29,9 +29,16 @@ def create_spark_session():
 
 
 def process_song_data(spark, input_data, output_data):
-    """
-    Loads song_data from S3 bucket specified by input_data, then extracts
-    the songs and artist tables to load into S3 bucket specified by output_data
+    """ Loads song_data from S3 bucket specified by input_data, then extracts
+        the songs and artist tables to load into S3 bucket specified by output_data
+
+        Parameters:
+            spark: Spark session
+            input_data: location of input data
+            output_data: location of output data
+
+        Returns:
+            None
     """
 
     # get filepath to song data file
@@ -57,20 +64,27 @@ def process_song_data(spark, input_data, output_data):
                     .dropDuplicates() \
                     .withColumn("song_id", monotonically_increasing_id())
     songs_table.write.partitionBy("year", "artist_id") \
-                     .parquet(output_data + 'songs/')
+                     .parquet(output_data + 'songs/', mode='overwrite')
 
     # extract and write artists table
     artists_fields = ["artist_id", "artist_name", "artist_location",
                       "artist_latitude", "artist_longitude"]
     artists_table = df.select(artists_fields).dropDuplicates()
-    artists_table.write.parquet(output_data + 'artists/')
+    artists_table.write.parquet(output_data + 'artists/', mode='overwrite')
 
 def process_log_data(spark, input_data, output_data):
-    """
-    Loads log_data from S3 bucket specified by input_data, then extracts the
-    users and time tables
-    Also loads artist and song tables from S3 bucket specified by output_data
-    Finally writes songplays table to S3 bucket specified by output_data
+    """ Loads log_data from S3 bucket specified by input_data, then extracts the
+        users and time tables
+        Also loads artist and song tables from S3 bucket specified by output_data
+        Finally writes songplays table to S3 bucket specified by output_data
+
+        Parameters:
+            spark: Spark session
+            input_data: location of input data
+            output_data: location of output data
+
+        Returns:
+            None
     """
 
     # get filepath to log data file
@@ -82,7 +96,7 @@ def process_log_data(spark, input_data, output_data):
     # extract and write users table
     users_fields = ["userdId", "firstName", "lastName", "gender", "level"]
     users_table = df.select(users_fields).dropDuplicates()
-    users_table.write.parquet(output_data + 'users/')
+    users_table.write.parquet(output_data + 'users/', mode='overwrite')
 
     # extract and write times table
     get_datetime = udf(lambda x: datetime.datetime.fromtimestamp(x / 1000.0).strftime('%Y-%m-%d %H:%M:%S'))
@@ -95,7 +109,8 @@ def process_log_data(spark, input_data, output_data):
         month("datetime").alias("month"),
         year("datetime").alias("year"),
         dayofweek("datetime").alias("weekday"))
-    time_table.write.partitionBy("year", "month").parquet(output_data + "time/")
+    time_table.write.partitionBy("year", "month") \
+                    .parquet(output_data + "time/", mode='overwrite')
 
     # load songs and artists table
     df_songs = spark.read.parquet(output_data + 'songs/*/*/*')
@@ -115,7 +130,9 @@ def process_log_data(spark, input_data, output_data):
                         "year", "month"]
     songplays_table = songplays.select(songplays_field) \
                                .withColumn("songplay_id", monotonically_increasing_id())
-    songplays_table.write.partitionBy("year", "month").parquet(output_data + "songplays/")
+    songplays_table.write \
+                   .partitionBy("year", "month") \
+                   .parquet(output_data + "songplays/", mode='overwrite')
 
 
 def main():
